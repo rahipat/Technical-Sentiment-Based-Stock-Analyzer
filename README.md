@@ -4,7 +4,7 @@ A full-stack stock analysis application that evaluates U.S. equities using techn
 
 The project consists of a Python backend that aggregates and analyzes financial data, and a lightweight HTML/CSS/JavaScript frontend that presents results in an interactive dashboard.
 
----
+
 
 ## Features
 
@@ -36,7 +36,7 @@ The project consists of a Python backend that aggregates and analyzes financial 
   * Asynchronous API calls
   * Input validation and loading states
 
----
+
 
 ## Tech Stack
 
@@ -55,24 +55,6 @@ The project consists of a Python backend that aggregates and analyzes financial 
 * CSS3
 * Vanilla JavaScript (ES6)
 
----
-
-## Project Structure
-
-```
-stock-analyzer/
-├── backend/
-│   └── stock_analyzer.py
-├── frontend/
-│   └── index.html
-├── screenshots/
-│   └── dashboard.png
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
-
----
 
 ## API Key Setup
 
@@ -99,7 +81,7 @@ setx POLYGON_API_KEY "your_key_here"
 setx ALPHA_VANTAGE_API_KEY "your_key_here"
 ```
 
----
+
 
 ## Running the Project
 
@@ -118,7 +100,7 @@ uvicorn stock_analyzer:app --reload
 3. Open the frontend:
    Open `frontend/index.html` in a browser.
 
----
+
 
 ## Example Output
 
@@ -128,7 +110,7 @@ uvicorn stock_analyzer:app --reload
 * Indicators: RSI, MACD, SMA crossover
 * Sentiment: Neutral
 
----
+
 
 ## Future Improvements
 
@@ -138,7 +120,7 @@ uvicorn stock_analyzer:app --reload
 * Cloud deployment
 * Additional indicators (Bollinger Bands, VWAP)
 
----
+
 
 ## Author
 
