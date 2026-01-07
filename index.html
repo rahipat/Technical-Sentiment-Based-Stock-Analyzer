@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Stock Analyzer</title>
+
+<style>
+  body {
+    font-family: system-ui;
+    background: #0f172a;
+    color: #e5e7eb;
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .card {
+    background: #020617;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0,0,0,.4);
+  }
+
+  #portfolio-card {
+    width: 300px;
+    flex-shrink: 0;
+  }
+
+  #analyzer-card {
+    width: 420px;
+  }
+
+  #news-card {
+    width: 400px;
+    overflow-y: auto;
+    max-height: 90vh;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    margin-bottom: 12px;
+    font-size: 16px;
+    margin-left: -10px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #22c55e;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+
+  button:disabled {
+    background: #64748b;
+    cursor: not-allowed;
+  }
+
+  button:hover:not(:disabled) {
+    background: #16a34a;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  th, td {
+    border: 3px solid #374151;
+    padding: 6px;
+    text-align: center;
+  }
+
+  th {
+    background: #111827;
+  }
+
+  td {
+    background: #1f2937;
+  }
+
+  .news {
+    font-size: 13px;
+  }
+
+  .news-item {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 6px;
+  }
+
+  .positive { color: #4ade80; }
+  .negative { color: #f87171; }
+  .neutral  { color: #e5e7eb; }
+</style>
+</head>
+
+<body>
+
+  <!-- Portfolio -->
+  <div class="card" id="portfolio-card">
+    <h3>Your Portfolio</h3>
+    <div id="portfolio"></div>
+    <div style="margin-top: 12px;">
+      <button onclick="clearPortfolio()">Clear Portfolio</button>
+    </div>
+  </div>
+
+  <!-- Analyzer -->
+  <div class="card" id="analyzer-card">
+    <h2>Stock Analyzer</h2>
+    <input id="ticker" placeholder="Enter ticker (AAPL)" />
+    <button id="analyze-btn" onclick="analyze()">Analyze</button>
+    <div id="result"></div>
+  </div>
+
+  <!-- News -->
+  <div class="card" id="news-card">
+    <h3>News Sentiment</h3>
+    <div id="news-container">No news loaded.</div>
+  </div>
+
+<script>
+/*
+  Frontend for a stock analysis engine using technical indicators
+  (RSI, MACD, SMAs) and news sentiment from a Python backend API.
+*/
+
+const API_BASE = "http://127.0.0.1:8000";
+let lastAnalysis = null;
+
+async function analyze() {
+  const tickerInput = document.getElementById("ticker");
+  const ticker = tickerInput.value.trim().toUpperCase();
+  const result = document.getElementById("result");
+  const newsContainer = document.getElementById("news-container");
+  const btn = document.getElementById("analyze-btn");
+
+  if (!ticker || ticker.length > 5) {
+    result.innerHTML = "Enter a valid ticker symbol.";
+    newsContainer.innerHTML = "";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Analyzing...";
+  result.innerHTML = "Loading...";
+  newsContainer.innerHTML = "Loading news...";
+
+  try {
+    const res = await fetch(`${API_BASE}/analyze/${ticker}`);
+    const data = await res.json();
+
+    if (!data.metrics) {
+      result.innerHTML = "Invalid ticker.";
+      newsContainer.innerHTML = "No news available.";
+      return;
+    }
+
+    lastAnalysis = data;
+
+    result.innerHTML = `
+      <b>${data.ticker}</b><br>
+      Decision: <b>${data.decision}</b><br>
+      Confidence: ${(data.confidence * 100).toFixed(1)}%<br><br>
+
+      Price: $${data.metrics.closing}<br>
+      RSI: ${data.metrics.rsi}<br>
+      MACD: ${data.metrics.macd}<br>
+      Signal: ${data.metrics.signal}<br>
+      Histogram: ${data.metrics.histogram}<br><br>
+
+      <button onclick="saveStock(lastAnalysis)">Save / Update Portfolio</button>
+    `;
+
+    if (data.news && data.news.length) {
+      const overallClass =
+        data.sentiment > 0.15 ? "positive" :
+        data.sentiment < -0.15 ? "negative" : "neutral";
+
+      let newsHTML = `
+        <div class="news">
+          <b>Overall Sentiment:
+            <span class="${overallClass}">${data.sentiment}</span>
+          </b><br><br>
+      `;
+
+      data.news.forEach(n => {
+        const cls =
+          n.sentiment > 0.15 ? "positive" :
+          n.sentiment < -0.15 ? "negative" : "neutral";
+
+        newsHTML += `
+          <div class="news-item">
+            <a href="${n.url}" target="_blank">${n.title}</a><br>
+            Source: ${n.source} |
+            Sentiment: <span class="${cls}">${n.sentiment}</span>
+          </div>
+        `;
+      });
+
+      newsHTML += "</div>";
+      newsContainer.innerHTML = newsHTML;
+    } else {
+      newsContainer.innerHTML = "No news available.";
+    }
+
+  } catch (err) {
+    result.innerHTML = "Server error.";
+    newsContainer.innerHTML = "Failed to load news.";
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Analyze";
+  }
+}
+
+// Portfolio functions
+function saveStock(data) {
+  let portfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
+  const index = portfolio.findIndex(s => s.ticker === data.ticker);
+
+  const stockData = {
+    ticker: data.ticker,
+    decision: data.decision,
+    confidence: data.confidence,
+    price: data.metrics.closing
+  };
+
+  if (index !== -1) portfolio[index] = stockData;
+  else portfolio.push(stockData);
+
+  localStorage.setItem("portfolio", JSON.stringify(portfolio));
+  showPortfolio();
+}
+
+function showPortfolio() {
+  const portfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
+  const div = document.getElementById("portfolio");
+
+  if (!portfolio.length) {
+    div.innerHTML = "No stocks saved.";
+    return;
+  }
+
+  let html = `
+    <table>
+      <tr>
+        <th>Ticker</th>
+        <th>Decision</th>
+        <th>Confidence</th>
+        <th>Price</th>
+      </tr>
+  `;
+
+  portfolio.forEach(s => {
+    html += `
+      <tr>
+        <td>${s.ticker}</td>
+        <td>${s.decision}</td>
+        <td>${(s.confidence * 100).toFixed(1)}%</td>
+        <td>$${s.price}</td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  div.innerHTML = html;
+}
+
+function clearPortfolio() {
+  localStorage.removeItem("portfolio");
+  showPortfolio();
+}
+
+document.addEventListener("DOMContentLoaded", showPortfolio);
+</script>
+</body>
+</html>
